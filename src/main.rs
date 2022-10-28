@@ -6,6 +6,6 @@ fn main() {
     run_native(
         "Rustpad",
         NativeOptions::default(),
-        Box::new(|_cc| Box::new(RustpadApp::default())),
+        Box::new(|_cc| Box::new(RustpadApp::new())),
     );
 }
