@@ -2,7 +2,8 @@ use std::{env::current_exe, process::Command};
 
 use eframe::{
     egui::{
-        Align, CentralPanel, Context, Layout, ScrollArea, TextEdit, TextStyle::*, TopBottomPanel,
+        Align, CentralPanel, Context, Key, Layout, Modifiers, ScrollArea, TextEdit, TextStyle::*,
+        TopBottomPanel,
     },
     epaint::{Color32, Vec2},
     App,
@@ -30,6 +31,22 @@ impl RustpadApp {
             ..Default::default()
         }
     }
+
+    fn zoom_in(&mut self) {
+        if self.zoom < 500 {
+            self.zoom += 10;
+        }
+    }
+
+    fn zoom_out(&mut self) {
+        if self.zoom > 10 {
+            self.zoom -= 10;
+        }
+    }
+
+    fn zoom_reset(&mut self) {
+        self.zoom = 100;
+    }
 }
 
 impl App for RustpadApp {
@@ -48,9 +65,26 @@ impl App for RustpadApp {
         style.spacing.button_padding = Vec2::new(8.0, 8.0);
         ctx.set_style(style);
 
+        match ctx.input_mut().zoom_delta() {
+            delta if delta > 1.0 => self.zoom_in(),
+            delta if delta < 1.0 => self.zoom_out(),
+            _ => {}
+        }
+
+        if ctx.input_mut().consume_key(Modifiers::ALT, Key::Num0) {
+            self.zoom_reset();
+        }
+        if ctx.input_mut().consume_key(Modifiers::ALT, Key::ArrowUp) {
+            self.zoom_in();
+        }
+        if ctx.input_mut().consume_key(Modifiers::ALT, Key::ArrowDown) {
+            self.zoom_out();
+        }
+
         if !self.show_settings {
             TopBottomPanel::top("top").show(ctx, |ui| {
                 ui.style_mut().visuals.widgets.inactive.bg_fill = Color32::TRANSPARENT;
+
                 ui.horizontal(|ui| {
                     ui.menu_button("File", |ui| {
                         if ui.button("New").clicked() {}
@@ -70,6 +104,7 @@ impl App for RustpadApp {
                             frame.close();
                         }
                     });
+
                     ui.menu_button("Edit", |ui| {
                         if ui.button("Undo").clicked() {}
                         ui.separator();
@@ -89,28 +124,26 @@ impl App for RustpadApp {
                         ui.separator();
                         if ui.button("Font").clicked() {}
                     });
+
                     ui.menu_button("View", |ui| {
                         ui.menu_button("Zoom", |ui| {
                             if ui.button("Zoom in").clicked() {
-                                if self.zoom < 500 {
-                                    self.zoom += 10;
-                                }
+                                self.zoom_in();
                                 ui.close_menu();
                             }
                             if ui.button("Zoom out").clicked() {
-                                if self.zoom > 10 {
-                                    self.zoom -= 10;
-                                }
+                                self.zoom_out();
                                 ui.close_menu();
                             }
                             if ui.button("Restore default zoom").clicked() {
-                                self.zoom = 100;
+                                self.zoom_reset();
                                 ui.close_menu();
                             }
                         });
                         ui.checkbox(&mut self.show_status_bar, "Status bar");
                         ui.checkbox(&mut false, "Word wrap");
                     });
+
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         if ui.button("⚙").clicked() {
                             self.show_settings = true;
