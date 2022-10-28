@@ -2,8 +2,8 @@ use std::{env::current_exe, process::Command};
 
 use eframe::{
     egui::{
-        Align, CentralPanel, Context, Key, Layout, Modifiers, ScrollArea, TextEdit, TextStyle::*,
-        TopBottomPanel, Ui,
+        widgets, Align, CentralPanel, Context, Key, Layout, Modifiers, ScrollArea, TextEdit,
+        TextStyle::*, TopBottomPanel, Ui,
     },
     epaint::{Color32, Vec2},
     App,
@@ -97,6 +97,7 @@ impl RustpadApp {
     fn file_menu(&mut self, ui: &mut Ui, frame: &mut eframe::Frame) {
         if ui.button("New").clicked() {}
         if ui.button("New window").clicked() {
+            ui.close_menu();
             Command::new(current_exe().expect("Failed to get current exe path"))
                 .spawn()
                 .expect("Failed to start new app");
@@ -172,10 +173,15 @@ impl RustpadApp {
 
     fn settings_panel(&mut self, ctx: &Context) {
         Self::central_scroll(ctx, |ui| {
+            ui.spacing_mut().item_spacing.y = 8.0;
             if ui.button("Back").clicked() {
                 self.show_settings = false;
             }
+            ui.add_space(8.0);
             ui.heading("Settings");
+            ui.label("App theme");
+            widgets::global_dark_light_mode_buttons(ui);
+            ui.add_space(8.0);
             ui.heading("About this app");
             ui.label(format!("Rustpad {}", env!("CARGO_PKG_VERSION")));
             ui.label("© 2022 Aidunlin");
