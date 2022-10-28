@@ -8,6 +8,8 @@ use eframe::{
 #[derive(Default)]
 pub struct RustpadApp {
     text: String,
+    cursor_line: usize,
+    cursor_col: usize,
 }
 
 impl App for RustpadApp {
@@ -68,7 +70,7 @@ impl App for RustpadApp {
 
         TopBottomPanel::bottom("bottom").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.label(format!("Ln {}, Col {}", 1, 1));
+                ui.label(format!("Ln {}, Col {}", self.cursor_line, self.cursor_col));
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     ui.label("UTF-8");
                     ui.separator();
@@ -82,27 +84,28 @@ impl App for RustpadApp {
 
         CentralPanel::default().show(ctx, |ui| {
             ScrollArea::both().auto_shrink([false; 2]).show(ui, |ui| {
-                ui.add_sized(
-                    ui.available_size(),
-                    TextEdit::multiline(&mut self.text)
+                ui.centered_and_justified(|ui| {
+                    let output = TextEdit::multiline(&mut self.text)
                         .frame(false)
-                        .code_editor(),
-                )
-                .context_menu(|ui| {
-                    if ui.button("Undo").clicked() {}
-                    ui.separator();
-                    if ui.button("Cut").clicked() {}
-                    if ui.button("Copy").clicked() {}
-                    if ui.button("Paste").clicked() {}
-                    if ui.button("Delete").clicked() {}
-                    ui.separator();
-                    if ui.button("Select all").clicked() {}
-                    ui.separator();
-                    ui.checkbox(&mut false, "Right-to-left reading order");
-                    ui.checkbox(&mut false, "Show Unicode control characters");
-                    // ui.menu_button("Insert Unicode control characters", |ui| {});
-                    ui.separator();
-                    if ui.button("Reconversion").clicked() {}
+                        .code_editor()
+                        .show(ui);
+
+                    output.response.context_menu(|ui| {
+                        if ui.button("Undo").clicked() {}
+                        ui.separator();
+                        if ui.button("Cut").clicked() {}
+                        if ui.button("Copy").clicked() {}
+                        if ui.button("Paste").clicked() {}
+                        if ui.button("Delete").clicked() {}
+                        ui.separator();
+                        if ui.button("Select all").clicked() {}
+                    });
+
+                    if let Some(cursor_range) = output.cursor_range {
+                        let cursor = cursor_range.primary.pcursor;
+                        self.cursor_line = cursor.paragraph + 1;
+                        self.cursor_col = cursor.offset + 1;
+                    }
                 });
             });
         });
