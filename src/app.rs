@@ -1,13 +1,19 @@
-use std::{env::current_exe, process::Command};
+use std::{env::current_exe, fs, process::Command};
 
 use eframe::{
     egui::{
         widgets, Align, CentralPanel, Context, Key, Layout, Modifiers, ScrollArea, TextEdit,
-        TextStyle::*, TopBottomPanel, Ui,
+        TextStyle::*, TopBottomPanel, Ui, Window,
     },
     epaint::{Color32, Vec2},
     App,
 };
+
+#[derive(Default)]
+pub struct DialogState {
+    text_edit: String,
+    show: bool,
+}
 
 #[derive(Default)]
 pub struct RustpadApp {
@@ -18,6 +24,8 @@ pub struct RustpadApp {
     cursor_col: usize,
     show_status_bar: bool,
     show_settings: bool,
+    open_dialog_state: DialogState,
+    save_dialog_state: DialogState,
 }
 
 impl RustpadApp {
@@ -38,6 +46,10 @@ impl RustpadApp {
                 .auto_shrink([false; 2])
                 .show(ui, contents);
         });
+    }
+
+    fn any_dialog_shown(&mut self) -> bool {
+        self.open_dialog_state.show || self.save_dialog_state.show
     }
 
     fn zoom_in(&mut self) {
@@ -78,6 +90,7 @@ impl RustpadApp {
 
     fn menu_bar(&mut self, ctx: &Context, frame: &mut eframe::Frame) {
         TopBottomPanel::top("menu_bar").show(ctx, |ui| {
+            ui.set_enabled(!self.any_dialog_shown());
             ui.style_mut().visuals.widgets.inactive.bg_fill = Color32::TRANSPARENT;
 
             ui.horizontal(|ui| {
@@ -102,9 +115,18 @@ impl RustpadApp {
                 .spawn()
                 .expect("Failed to start new app");
         }
-        if ui.button("Open").clicked() {}
-        if ui.button("Save").clicked() {}
-        if ui.button("Save as").clicked() {}
+        if ui.button("Open").clicked() {
+            self.open_dialog_state.show = true;
+            ui.close_menu();
+        }
+        if ui.button("Save").clicked() {
+            self.save_dialog_state.show = true;
+            ui.close_menu();
+        }
+        if ui.button("Save as").clicked() {
+            self.save_dialog_state.show = true;
+            ui.close_menu();
+        }
         if ui.separator().clicked() {}
         if ui.button("Page setup").clicked() {}
         if ui.button("Print").clicked() {}
@@ -190,6 +212,7 @@ impl RustpadApp {
 
     fn main_panel(&mut self, ctx: &Context) {
         Self::central_scroll(ctx, |ui| {
+            ui.set_enabled(!self.any_dialog_shown());
             ui.centered_and_justified(|ui| {
                 ui.style_mut()
                     .text_styles
@@ -222,6 +245,55 @@ impl RustpadApp {
         ui.separator();
         if ui.button("Select all").clicked() {}
     }
+
+    fn open_dialog(&mut self, ctx: &Context) {
+        Window::new("Open")
+            .resizable(false)
+            .collapsible(false)
+            .title_bar(false)
+            .show(ctx, |ui| {
+                ui.spacing_mut().item_spacing.y = 8.0;
+                ui.label("Open file");
+                ui.text_edit_singleline(&mut self.open_dialog_state.text_edit);
+                ui.horizontal(|ui| {
+                    if ui.button("Open").clicked() {
+                        match fs::read_to_string(&self.open_dialog_state.text_edit) {
+                            Ok(string) => {
+                                self.text = string;
+                                self.open_dialog_state.show = false;
+                            }
+                            Err(e) => println!("Failed to open file: {}", e),
+                        }
+                    }
+                    if ui.button("Cancel").clicked() {
+                        self.open_dialog_state.show = false;
+                    }
+                });
+            });
+    }
+
+    fn save_dialog(&mut self, ctx: &Context) {
+        Window::new("Save")
+            .resizable(false)
+            .collapsible(false)
+            .title_bar(false)
+            .show(ctx, |ui| {
+                ui.spacing_mut().item_spacing.y = 8.0;
+                ui.label("Save file");
+                ui.text_edit_singleline(&mut self.save_dialog_state.text_edit);
+                ui.horizontal(|ui| {
+                    if ui.button("Save").clicked() {
+                        match fs::write(&self.save_dialog_state.text_edit, &self.text) {
+                            Ok(_) => self.save_dialog_state.show = false,
+                            Err(e) => println!("Failed to save file: {}", e),
+                        };
+                    }
+                    if ui.button("Cancel").clicked() {
+                        self.save_dialog_state.show = false;
+                    }
+                });
+            });
+    }
 }
 
 impl App for RustpadApp {
@@ -238,6 +310,13 @@ impl App for RustpadApp {
         ctx.set_style(style);
 
         self.handle_zoom_inputs(ctx);
+
+        if self.open_dialog_state.show {
+            self.open_dialog(ctx);
+        }
+        if self.save_dialog_state.show {
+            self.save_dialog(ctx);
+        }
 
         if self.show_settings {
             self.settings_panel(ctx);
