@@ -69,23 +69,23 @@ impl RustpadApp {
     }
 
     fn handle_zoom_inputs(&mut self, ctx: &Context) {
-        let mut input = ctx.input_mut();
+        ctx.input_mut(|input| {
+            match input.zoom_delta() {
+                delta if delta > 1.0 => self.zoom_in(),
+                delta if delta < 1.0 => self.zoom_out(),
+                _ => {}
+            }
 
-        match input.zoom_delta() {
-            delta if delta > 1.0 => self.zoom_in(),
-            delta if delta < 1.0 => self.zoom_out(),
-            _ => {}
-        }
-
-        if input.consume_key(Modifiers::ALT, Key::Num0) {
-            self.zoom_reset();
-        }
-        if input.consume_key(Modifiers::ALT, Key::ArrowUp) {
-            self.zoom_in();
-        }
-        if input.consume_key(Modifiers::ALT, Key::ArrowDown) {
-            self.zoom_out();
-        }
+            if input.consume_key(Modifiers::ALT, Key::Num0) {
+                self.zoom_reset();
+            }
+            if input.consume_key(Modifiers::ALT, Key::ArrowUp) {
+                self.zoom_in();
+            }
+            if input.consume_key(Modifiers::ALT, Key::ArrowDown) {
+                self.zoom_out();
+            }
+        });
     }
 
     fn menu_bar(&mut self, ctx: &Context, frame: &mut eframe::Frame) {
